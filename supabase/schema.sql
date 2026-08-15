@@ -251,6 +251,7 @@ create table public.messages (
   client_id uuid not null references public.profiles(id) on delete cascade,
   from_role text not null check (from_role in ('client', 'vendor')),
   text text not null,
+  read boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -269,6 +270,16 @@ create policy "un client envoie ses propres messages, un vendeur envoie à n'imp
     (from_role = 'client' and auth.uid() = client_id)
     or (from_role = 'vendor' and public.is_vendor())
   );
+
+create policy "un client marque ses messages comme lus"
+  on public.messages for update
+  using (auth.uid() = client_id)
+  with check (auth.uid() = client_id);
+
+create policy "un vendeur marque les messages comme lus"
+  on public.messages for update
+  using (public.is_vendor())
+  with check (public.is_vendor());
 
 -- ------------------------------------------------------------
 -- Pour créer votre compte vendeur : inscrivez-vous normalement sur le

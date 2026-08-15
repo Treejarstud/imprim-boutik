@@ -11,8 +11,10 @@ export default function ChatWidget() {
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
 
+  // Charge les messages et écoute les nouveaux dès que l'utilisateur est
+  // connecté, même si la fenêtre de chat est fermée (pour le badge non lus).
   useEffect(() => {
-    if (!open || !user) return;
+    if (!user) return;
 
     let active = true;
     async function load() {
@@ -38,7 +40,17 @@ export default function ChatWidget() {
       active = false;
       supabase.removeChannel(channel);
     };
-  }, [open, user]);
+  }, [user]);
+
+  const unreadCount = messages.filter((m) => m.from_role === "vendor" && !m.read).length;
+
+  async function openChat() {
+    if (!user) return openAuth("login");
+    setOpen(true);
+    if (unreadCount === 0) return;
+    setMessages((prev) => prev.map((m) => (m.from_role === "vendor" ? { ...m, read: true } : m)));
+    await supabase.from("messages").update({ read: true }).eq("client_id", user.id).eq("from_role", "vendor").eq("read", false);
+  }
 
   async function send() {
     if (!draft.trim() || !user) return;
@@ -50,10 +62,15 @@ export default function ChatWidget() {
   return (
     <>
       <button
-        onClick={() => (user ? setOpen((v) => !v) : openAuth("login"))}
+        onClick={() => (open ? setOpen(false) : openChat())}
         className="fixed bottom-5 right-5 w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg z-40 hover:bg-blue-700"
       >
         <MessageCircle size={20} />
+        {!open && unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
       </button>
 
       {open && user && (

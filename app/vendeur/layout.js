@@ -11,7 +11,7 @@ const TABS = [
   { href: "/vendeur/categories", label: "Catégories", icon: Layers },
   { href: "/vendeur/articles", label: "Articles", icon: Package },
   { href: "/vendeur/stats", label: "Statistiques", icon: BarChart3, badge: "pending" },
-  { href: "/vendeur/messages", label: "Messagerie", icon: Users },
+  { href: "/vendeur/messages", label: "Messagerie", icon: Users, badge: "messages" },
 ];
 
 export default function VendeurLayout({ children }) {
@@ -19,6 +19,7 @@ export default function VendeurLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const [pendingCount, setPendingCount] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   useEffect(() => {
     if (!isVendor) return;
@@ -37,6 +38,31 @@ export default function VendeurLayout({ children }) {
     const channel = supabase
       .channel("vendor-orders-watch")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => loadCount())
+      .subscribe();
+
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, [isVendor]);
+
+  useEffect(() => {
+    if (!isVendor) return;
+
+    let active = true;
+    async function loadUnread() {
+      const { count } = await supabase
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("from_role", "client")
+        .eq("read", false);
+      if (active) setUnreadMessages(count || 0);
+    }
+    loadUnread();
+
+    const channel = supabase
+      .channel("vendor-messages-watch")
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => loadUnread())
       .subscribe();
 
     return () => {
@@ -83,11 +109,16 @@ export default function VendeurLayout({ children }) {
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <header className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/vendeur" className="font-bold text-lg flex items-center gap-2">
+          <Link href="/vendeur" className="font-bold text-lg flex items-center gap-2 flex-wrap">
             Imprim Boutik <span className="text-sm font-normal text-gray-400">· espace pro</span>
             {pendingCount > 0 && (
               <span className="bg-orange-500 text-white text-[11px] font-medium px-2 py-0.5 rounded-full">
                 {pendingCount} nouvelle{pendingCount > 1 ? "s" : ""} commande{pendingCount > 1 ? "s" : ""}
+              </span>
+            )}
+            {unreadMessages > 0 && (
+              <span className="bg-red-500 text-white text-[11px] font-medium px-2 py-0.5 rounded-full">
+                {unreadMessages} nouveau{unreadMessages > 1 ? "x" : ""} message{unreadMessages > 1 ? "s" : ""}
               </span>
             )}
           </Link>
@@ -118,6 +149,15 @@ export default function VendeurLayout({ children }) {
                   }`}
                 >
                   {pendingCount}
+                </span>
+              )}
+              {t.badge === "messages" && unreadMessages > 0 && (
+                <span
+                  className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                    pathname === t.href ? "bg-white text-blue-600" : "bg-red-500 text-white"
+                  }`}
+                >
+                  {unreadMessages}
                 </span>
               )}
             </Link>

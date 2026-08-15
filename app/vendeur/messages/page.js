@@ -11,26 +11,38 @@ export default function MessagesPage() {
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
 
+  async function loadThreads() {
+    const { data: msgs } = await supabase.from("messages").select("*").order("created_at", { ascending: true });
+    const { data: profiles } = await supabase.from("profiles").select("id, nom, prenom");
+    const nameById = Object.fromEntries((profiles || []).map((p) => [p.id, `${p.prenom} ${p.nom}`]));
+
+    const byClient = {};
+    (msgs || []).forEach((m) => {
+      byClient[m.client_id] = byClient[m.client_id] || [];
+      byClient[m.client_id].push(m);
+    });
+
+    const list = Object.entries(byClient).map(([clientId, list]) => ({
+      clientId,
+      name: nameById[clientId] || "Client",
+      last: list[list.length - 1],
+      unread: list.filter((m) => m.from_role === "client" && !m.read).length,
+    }));
+    // Les conversations avec des messages non lus remontent en premier
+    list.sort((a, b) => (b.unread > 0) - (a.unread > 0) || new Date(b.last?.created_at) - new Date(a.last?.created_at));
+    setThreads(list);
+    setLoading(false);
+  }
+
   useEffect(() => {
-    (async () => {
-      const { data: msgs } = await supabase.from("messages").select("*").order("created_at", { ascending: true });
-      const { data: profiles } = await supabase.from("profiles").select("id, nom, prenom");
-      const nameById = Object.fromEntries((profiles || []).map((p) => [p.id, `${p.prenom} ${p.nom}`]));
+    loadThreads();
 
-      const byClient = {};
-      (msgs || []).forEach((m) => {
-        byClient[m.client_id] = byClient[m.client_id] || [];
-        byClient[m.client_id].push(m);
-      });
+    const channel = supabase
+      .channel("vendor-threads-watch")
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => loadThreads())
+      .subscribe();
 
-      const list = Object.entries(byClient).map(([clientId, list]) => ({
-        clientId,
-        name: nameById[clientId] || "Client",
-        last: list[list.length - 1],
-      }));
-      setThreads(list);
-      setLoading(false);
-    })();
+    return () => supabase.removeChannel(channel);
   }, []);
 
   useEffect(() => {
@@ -40,6 +52,14 @@ export default function MessagesPage() {
     async function load() {
       const { data } = await supabase.from("messages").select("*").eq("client_id", selected.clientId).order("created_at", { ascending: true });
       if (active) setThread(data || []);
+
+      // Marque comme lus les messages du client dès qu'on ouvre la conversation
+      await supabase
+        .from("messages")
+        .update({ read: true })
+        .eq("client_id", selected.clientId)
+        .eq("from_role", "client")
+        .eq("read", false);
     }
     load();
 
@@ -76,10 +96,17 @@ export default function MessagesPage() {
             <button
               key={t.clientId}
               onClick={() => setSelected(t)}
-              className={`w-full text-left p-2.5 text-sm border-b border-gray-100 ${selected?.clientId === t.clientId ? "bg-gray-100" : "hover:bg-gray-50"}`}
+              className={`w-full text-left p-2.5 text-sm border-b border-gray-100 flex items-start justify-between gap-2 ${selected?.clientId === t.clientId ? "bg-gray-100" : "hover:bg-gray-50"}`}
             >
-              {t.name}
-              <div className="text-xs text-gray-400 truncate">{t.last?.text}</div>
+              <div className="min-w-0">
+                <div className={t.unread > 0 ? "font-semibold" : ""}>{t.name}</div>
+                <div className="text-xs text-gray-400 truncate">{t.last?.text}</div>
+              </div>
+              {t.unread > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-semibold w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                  {t.unread > 9 ? "9+" : t.unread}
+                </span>
+              )}
             </button>
           ))}
         </div>
