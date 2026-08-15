@@ -191,6 +191,13 @@ export default function ArticlePage() {
           </div>
         </div>
 
+        {article.video_url && (
+          <div className="mt-6 bg-white border border-gray-200 rounded-lg p-5">
+            <div className="font-medium text-sm mb-3">Vidéo de présentation</div>
+            <video src={article.video_url} controls className="w-full max-h-96 rounded-lg bg-black" />
+          </div>
+        )}
+
         <div className="mt-6 bg-white border border-gray-200 rounded-lg p-5">
           <div className="font-medium text-sm mb-3">Avis clients ({reviews.length})</div>
           <div className="space-y-3 max-h-56 overflow-y-auto pr-1">

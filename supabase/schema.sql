@@ -84,6 +84,7 @@ create table public.articles (
   support text,
   dimensions text,
   image_url text,
+  video_url text,
   published boolean not null default false,
   views integer not null default 0,
   created_at timestamptz not null default now()

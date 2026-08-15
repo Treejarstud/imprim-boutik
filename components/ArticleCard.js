@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Star, ImageOff } from "lucide-react";
+import { Star, ImageOff, Video } from "lucide-react";
 import { fmtPrice } from "@/lib/helpers";
 
 export default function ArticleCard({ article, highlight }) {
@@ -20,6 +20,11 @@ export default function ArticleCard({ article, highlight }) {
         {highlight && (
           <span className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
             Populaire
+          </span>
+        )}
+        {article.video_url && (
+          <span className="absolute top-2 right-2 bg-black/60 text-white p-1 rounded-full" title="Vidéo disponible">
+            <Video size={12} />
           </span>
         )}
       </div>

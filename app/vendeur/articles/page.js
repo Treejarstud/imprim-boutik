@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Eye, EyeOff, Upload, ImageOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, Upload, ImageOff, Video, X } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
-import { fmtPrice, uploadImage } from "@/lib/helpers";
+import { fmtPrice, uploadImage, uploadVideo } from "@/lib/helpers";
 import { useAuth } from "@/contexts/AuthContext";
 import Modal from "@/components/Modal";
 
@@ -143,6 +143,8 @@ function ArticleForm({ categories, initial, userId, onCancel, onSaved }) {
   const [price, setPrice] = useState(initial?.price || "");
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(initial?.image_url || null);
+  const [videoFile, setVideoFile] = useState(null);
+  const [videoPreview, setVideoPreview] = useState(initial?.video_url || null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -151,6 +153,18 @@ function ArticleForm({ categories, initial, userId, onCancel, onSaved }) {
     if (!file) return;
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
+  }
+
+  function handleVideo(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setVideoFile(file);
+    setVideoPreview(URL.createObjectURL(file));
+  }
+
+  function removeVideo() {
+    setVideoFile(null);
+    setVideoPreview(null);
   }
 
   async function save() {
@@ -162,12 +176,17 @@ function ArticleForm({ categories, initial, userId, onCancel, onSaved }) {
       if (imageFile) {
         image_url = await uploadImage("article-images", imageFile, userId);
       }
+      let video_url = videoPreview ? initial?.video_url || null : null;
+      if (videoFile) {
+        video_url = await uploadVideo(videoFile, userId);
+      }
       const payload = {
         title: title.trim(),
         category_id: categoryId,
         description,
         price: Number(price) || 0,
         image_url,
+        video_url,
       };
       if (initial) {
         const { error: err } = await supabase.from("articles").update(payload).eq("id", initial.id);
@@ -221,6 +240,29 @@ function ArticleForm({ categories, initial, userId, onCancel, onSaved }) {
               <Upload size={14} /> Choisir
               <input type="file" accept="image/*" onChange={handleFile} className="hidden" />
             </label>
+          </div>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-600">Vidéo de présentation (optionnel, max 30 Mo)</label>
+          <div className="flex items-center gap-3 mt-1">
+            {videoPreview ? (
+              <div className="relative">
+                <video src={videoPreview} className="w-28 h-16 object-cover rounded-md border border-gray-200 bg-black" muted />
+                <button
+                  type="button"
+                  onClick={removeVideo}
+                  className="absolute -top-2 -right-2 bg-white border border-gray-300 rounded-full p-0.5 hover:bg-gray-100"
+                  title="Retirer la vidéo"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ) : (
+              <label className="text-sm border border-gray-300 rounded-md px-3 py-2 cursor-pointer flex items-center gap-1 hover:bg-gray-50">
+                <Video size={14} /> Choisir une vidéo
+                <input type="file" accept="video/*" onChange={handleVideo} className="hidden" />
+              </label>
+            )}
           </div>
         </div>
         {error && <div className="text-xs text-red-600">{error}</div>}
