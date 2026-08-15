@@ -7,7 +7,6 @@ import { fmtPrice, uploadImage } from "@/lib/helpers";
 import { useAuth } from "@/contexts/AuthContext";
 import Modal from "@/components/Modal";
 
-const SUPPORTS = ["Bâche PVC", "Vinyle adhésif", "Toile tendue", "Panneau rigide", "Papier photo"];
 
 export default function ArticlesPage() {
   const { user } = useAuth();
@@ -142,8 +141,6 @@ function ArticleForm({ categories, initial, userId, onCancel, onSaved }) {
   const [categoryId, setCategoryId] = useState(initial?.category_id || categories[0]?.id || "");
   const [description, setDescription] = useState(initial?.description || "");
   const [price, setPrice] = useState(initial?.price || "");
-  const [support, setSupport] = useState(initial?.support || SUPPORTS[0]);
-  const [dimensions, setDimensions] = useState(initial?.dimensions || "");
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(initial?.image_url || null);
   const [busy, setBusy] = useState(false);
@@ -170,8 +167,6 @@ function ArticleForm({ categories, initial, userId, onCancel, onSaved }) {
         category_id: categoryId,
         description,
         price: Number(price) || 0,
-        support,
-        dimensions,
         image_url,
       };
       if (initial) {
@@ -207,22 +202,8 @@ function ArticleForm({ categories, initial, userId, onCancel, onSaved }) {
             ))}
           </select>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-medium text-gray-600">Support</label>
-            <select value={support} onChange={(e) => setSupport(e.target.value)} className="w-full border border-gray-300 rounded-md p-2 text-sm mt-1">
-              {SUPPORTS.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-600">Dimensions</label>
-            <input value={dimensions} onChange={(e) => setDimensions(e.target.value)} placeholder="ex : 3m x 2m" className="w-full border border-gray-300 rounded-md p-2 text-sm mt-1" />
-          </div>
-        </div>
         <div>
-          <label className="text-xs font-medium text-gray-600">Prix (€)</label>
+          <label className="text-xs font-medium text-gray-600">Prix (Frs CFA)</label>
           <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full border border-gray-300 rounded-md p-2 text-sm mt-1" />
         </div>
         <div>

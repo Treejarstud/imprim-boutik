@@ -25,9 +25,6 @@ export default function ArticleCard({ article, highlight }) {
       </div>
       <div className="p-3">
         <div className="font-medium text-sm">{article.title}</div>
-        <div className="text-xs text-gray-500 mt-0.5">
-          {article.support} · {article.dimensions}
-        </div>
         <div className="flex items-center justify-between mt-2">
           <span className="font-semibold text-sm">{fmtPrice(article.price)}</span>
           <span className="flex items-center gap-1 text-xs text-gray-500">

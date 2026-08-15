@@ -146,9 +146,6 @@ export default function ArticlePage() {
           </div>
           <div>
             <div className="font-semibold text-xl">{article.title}</div>
-            <div className="text-sm text-gray-500 mt-1">
-              {article.support} · {article.dimensions}
-            </div>
             <p className="text-sm mt-3 text-gray-600">{article.description}</p>
             <div className="text-lg font-semibold mt-3">{fmtPrice(article.price)}</div>
 
