@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ShoppingBag, MapPin, Loader2, Check, ImageOff } from "lucide-react";
+import { ShoppingBag, MapPin, Loader2, Check, ImageOff, Minus, Plus, ClipboardList } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { fmtPrice, fmtDate } from "@/lib/helpers";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,6 +24,7 @@ export default function ArticlePage() {
   const [reviewBusy, setReviewBusy] = useState(false);
 
   const [ordering, setOrdering] = useState(false);
+  const [quantity, setQuantity] = useState(1);
   const [location, setLocation] = useState("");
   const [locating, setLocating] = useState(false);
   const [orderBusy, setOrderBusy] = useState(false);
@@ -103,6 +104,7 @@ export default function ArticlePage() {
       client_name: `${profile?.prenom || ""} ${profile?.nom || ""}`.trim() || "Client",
       article_title: article.title,
       price: article.price,
+      quantity,
       location: location.trim(),
       status: "pending",
     });
@@ -160,7 +162,27 @@ export default function ArticlePage() {
 
             {ordering && !orderDone && (
               <div className="mt-4 border-t border-gray-200 pt-4">
-                <label className="text-xs font-medium text-gray-600">Localisation de livraison</label>
+                <label className="text-xs font-medium text-gray-600">Quantité</label>
+                <div className="flex items-center gap-3 mt-1">
+                  <button
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className="w-8 text-center text-sm font-medium">{quantity}</span>
+                  <button
+                    onClick={() => setQuantity((q) => q + 1)}
+                    className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    <Plus size={14} />
+                  </button>
+                  <span className="text-sm text-gray-500 ml-2">
+                    Total : <span className="font-semibold text-gray-900">{fmtPrice(article.price * quantity)}</span>
+                  </span>
+                </div>
+
+                <label className="text-xs font-medium text-gray-600 mt-4 block">Localisation de livraison</label>
                 <div className="flex gap-2 mt-1">
                   <input
                     value={location}
@@ -184,8 +206,13 @@ export default function ArticlePage() {
             )}
 
             {orderDone && (
-              <div className="mt-4 border-t border-gray-200 pt-4 text-sm text-green-700 flex items-center gap-2">
-                <Check size={16} /> Commande enregistrée — vous payerez à la livraison.
+              <div className="mt-4 border-t border-gray-200 pt-4 text-sm text-green-700 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <Check size={16} /> Commande enregistrée — vous payerez à la livraison.
+                </div>
+                <a href="/mes-commandes" className="text-blue-600 underline text-xs flex items-center gap-1 w-fit">
+                  <ClipboardList size={13} /> Suivre mes commandes
+                </a>
               </div>
             )}
           </div>

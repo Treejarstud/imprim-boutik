@@ -159,8 +159,9 @@ create table public.orders (
   client_name text not null,
   article_title text not null,
   price numeric not null,
+  quantity integer not null default 1 check (quantity > 0),
   location text not null,
-  status text not null default 'pending' check (status in ('pending', 'paid')),
+  status text not null default 'pending' check (status in ('pending', 'confirmed', 'delivered', 'cancelled')),
   created_at timestamptz not null default now()
 );
 
@@ -180,6 +181,67 @@ create policy "un client passe ses propres commandes"
 create policy "seul un vendeur met à jour le statut d'une commande"
   on public.orders for update
   using (public.is_vendor());
+
+create policy "un client annule sa propre commande en attente"
+  on public.orders for update
+  using (auth.uid() = client_id and status = 'pending')
+  with check (auth.uid() = client_id and status = 'cancelled');
+
+-- ------------------------------------------------------------
+-- NOTIFICATIONS (avertit le client dans l'application à chaque
+-- changement de statut d'une commande)
+-- ------------------------------------------------------------
+create table public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references public.profiles(id) on delete cascade,
+  order_id uuid references public.orders(id) on delete cascade,
+  message text not null,
+  read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table public.notifications enable row level security;
+
+create policy "un client voit ses propres notifications"
+  on public.notifications for select
+  using (auth.uid() = client_id);
+
+create policy "un client marque ses notifications comme lues"
+  on public.notifications for update
+  using (auth.uid() = client_id)
+  with check (auth.uid() = client_id);
+
+-- Crée automatiquement une notification à chaque changement de statut
+-- d'une commande (fonctionne quel que soit qui modifie la commande).
+create or replace function public.notify_order_status_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.status <> old.status then
+    insert into public.notifications (client_id, order_id, message)
+    values (
+      new.client_id,
+      new.id,
+      case new.status
+        when 'confirmed' then 'Votre commande « ' || new.article_title || ' » a été confirmée.'
+        when 'delivered' then 'Votre commande « ' || new.article_title || ' » a été livrée.'
+        when 'cancelled' then 'Votre commande « ' || new.article_title || ' » a été annulée.'
+        else 'Le statut de votre commande « ' || new.article_title || ' » a changé.'
+      end
+    );
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_notify_order_status_change on public.orders;
+create trigger trg_notify_order_status_change
+  after update on public.orders
+  for each row
+  execute function public.notify_order_status_change();
 
 -- ------------------------------------------------------------
 -- MESSAGES (discussion client <-> vendeur)

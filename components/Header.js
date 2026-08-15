@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { LogIn, LogOut } from "lucide-react";
+import { LogIn, LogOut, ClipboardList } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import NotificationBell from "./NotificationBell";
 
 export default function Header() {
   const { user, profile, logout, openAuth } = useAuth();
@@ -16,8 +17,12 @@ export default function Header() {
         </Link>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {user && <NotificationBell />}
           {user ? (
             <div className="flex items-center gap-2">
+              <Link href="/mes-commandes" className="text-sm text-gray-600 hover:text-gray-900 hidden sm:flex items-center gap-1.5">
+                <ClipboardList size={15} /> Mes commandes
+              </Link>
               <Link href="/profil" className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900">
                 <span className="w-7 h-7 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center shrink-0">
                   {profile?.photo_url ? (
