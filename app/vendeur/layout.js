@@ -1,14 +1,16 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Layers, Package, BarChart3, Users, LogOut, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabaseClient";
 
 const TABS = [
   { href: "/vendeur/categories", label: "Catégories", icon: Layers },
   { href: "/vendeur/articles", label: "Articles", icon: Package },
-  { href: "/vendeur/stats", label: "Statistiques", icon: BarChart3 },
+  { href: "/vendeur/stats", label: "Statistiques", icon: BarChart3, badge: "pending" },
   { href: "/vendeur/messages", label: "Messagerie", icon: Users },
 ];
 
@@ -16,6 +18,32 @@ export default function VendeurLayout({ children }) {
   const { user, profile, loading, isVendor, logout, openAuth } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (!isVendor) return;
+
+    let active = true;
+    async function loadCount() {
+      const { count } = await supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending");
+      if (active) setPendingCount(count || 0);
+    }
+    loadCount();
+
+    // Se met à jour en direct : nouvelle commande, ou commande traitée par le vendeur
+    const channel = supabase
+      .channel("vendor-orders-watch")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => loadCount())
+      .subscribe();
+
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, [isVendor]);
 
   if (loading) {
     return (
@@ -55,8 +83,13 @@ export default function VendeurLayout({ children }) {
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <header className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/vendeur" className="font-bold text-lg">
+          <Link href="/vendeur" className="font-bold text-lg flex items-center gap-2">
             Imprim Boutik <span className="text-sm font-normal text-gray-400">· espace pro</span>
+            {pendingCount > 0 && (
+              <span className="bg-orange-500 text-white text-[11px] font-medium px-2 py-0.5 rounded-full">
+                {pendingCount} nouvelle{pendingCount > 1 ? "s" : ""} commande{pendingCount > 1 ? "s" : ""}
+              </span>
+            )}
           </Link>
           <div className="flex items-center gap-2">
             <Link href="/" className="text-sm px-3 py-1.5 rounded-md bg-gray-100 hover:bg-gray-200">
@@ -78,6 +111,15 @@ export default function VendeurLayout({ children }) {
               className={`text-sm px-3 py-2 rounded-md flex items-center gap-2 whitespace-nowrap ${pathname === t.href ? "bg-blue-600 text-white" : "text-gray-700 hover:bg-gray-100"}`}
             >
               <t.icon size={15} /> {t.label}
+              {t.badge === "pending" && pendingCount > 0 && (
+                <span
+                  className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                    pathname === t.href ? "bg-white text-blue-600" : "bg-orange-500 text-white"
+                  }`}
+                >
+                  {pendingCount}
+                </span>
+              )}
             </Link>
           ))}
         </nav>
