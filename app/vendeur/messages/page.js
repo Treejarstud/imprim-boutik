@@ -55,12 +55,19 @@ export default function MessagesPage() {
       if (active) setThread(data || []);
 
       // Marque comme lus les messages du client dès qu'on ouvre la conversation
-      await supabase
+      const { error } = await supabase
         .from("messages")
         .update({ read: true })
         .eq("client_id", selected.clientId)
         .eq("from_role", "client")
         .eq("read", false);
+
+      if (!error && active) {
+        // Mise à jour immédiate de l'écran : le badge disparaît tout de suite,
+        // sans dépendre du temps réel.
+        setThread((prev) => prev.map((m) => (m.from_role === "client" ? { ...m, read: true } : m)));
+        setThreads((prev) => prev.map((t) => (t.clientId === selected.clientId ? { ...t, unread: 0 } : t)));
+      }
     }
     load();
 
@@ -69,7 +76,7 @@ export default function MessagesPage() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `client_id=eq.${selected.clientId}` },
-        (payload) => setThread((prev) => [...prev, payload.new])
+        (payload) => setThread((prev) => (prev.some((m) => m.id === payload.new.id) ? prev : [...prev, payload.new]))
       )
       .subscribe();
 
@@ -83,7 +90,14 @@ export default function MessagesPage() {
     if (!draft.trim() || !selected) return;
     const text = draft.trim();
     setDraft("");
-    await supabase.from("messages").insert({ client_id: selected.clientId, from_role: "vendor", text });
+    const { data, error } = await supabase
+      .from("messages")
+      .insert({ client_id: selected.clientId, from_role: "vendor", text })
+      .select()
+      .single();
+    if (!error && data) {
+      setThread((prev) => (prev.some((m) => m.id === data.id) ? prev : [...prev, data]));
+    }
   }
 
   return (

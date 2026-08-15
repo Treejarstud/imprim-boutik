@@ -33,7 +33,7 @@ export default function ChatWidget() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `client_id=eq.${user.id}` },
-        (payload) => setMessages((prev) => [...prev, payload.new])
+        (payload) => setMessages((prev) => (prev.some((m) => m.id === payload.new.id) ? prev : [...prev, payload.new]))
       )
       .subscribe();
 
@@ -57,7 +57,14 @@ export default function ChatWidget() {
     if (!draft.trim() || !user) return;
     const text = draft.trim();
     setDraft("");
-    await supabase.from("messages").insert({ client_id: user.id, from_role: "client", text });
+    const { data, error } = await supabase
+      .from("messages")
+      .insert({ client_id: user.id, from_role: "client", text })
+      .select()
+      .single();
+    if (!error && data) {
+      setMessages((prev) => (prev.some((m) => m.id === data.id) ? prev : [...prev, data]));
+    }
   }
 
   return (
