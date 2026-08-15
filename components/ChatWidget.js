@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { MessageCircle, X, Send } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { fmtTime } from "@/lib/helpers";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function ChatWidget() {
@@ -84,11 +85,11 @@ export default function ChatWidget() {
           <div className="flex-1 p-3 space-y-2 max-h-64 overflow-y-auto">
             {messages.length === 0 && <div className="text-xs text-gray-400">Posez votre question ici.</div>}
             {messages.map((m) => (
-              <div
-                key={m.id}
-                className={`text-xs max-w-[85%] p-2 rounded-lg ${m.from_role === "client" ? "ml-auto bg-blue-600 text-white" : "bg-gray-100 text-gray-800"}`}
-              >
-                {m.text}
+              <div key={m.id} className={`max-w-[85%] ${m.from_role === "client" ? "ml-auto" : ""}`}>
+                <div className={`text-xs p-2 rounded-lg ${m.from_role === "client" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-800"}`}>
+                  {m.text}
+                </div>
+                <div className={`text-[10px] text-gray-400 mt-0.5 ${m.from_role === "client" ? "text-right" : ""}`}>{fmtTime(m.created_at)}</div>
               </div>
             ))}
           </div>

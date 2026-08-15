@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Send } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { fmtTime } from "@/lib/helpers";
 
 export default function MessagesPage() {
   const [threads, setThreads] = useState([]);
@@ -117,8 +118,11 @@ export default function MessagesPage() {
             <>
               <div className="flex-1 p-3 space-y-2 max-h-72 overflow-y-auto">
                 {thread.map((m) => (
-                  <div key={m.id} className={`text-xs max-w-[75%] p-2 rounded-lg ${m.from_role === "vendor" ? "ml-auto bg-blue-600 text-white" : "bg-gray-100 text-gray-800"}`}>
-                    {m.text}
+                  <div key={m.id} className={`max-w-[75%] ${m.from_role === "vendor" ? "ml-auto" : ""}`}>
+                    <div className={`text-xs p-2 rounded-lg ${m.from_role === "vendor" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-800"}`}>
+                      {m.text}
+                    </div>
+                    <div className={`text-[10px] text-gray-400 mt-0.5 ${m.from_role === "vendor" ? "text-right" : ""}`}>{fmtTime(m.created_at)}</div>
                   </div>
                 ))}
               </div>

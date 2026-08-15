@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Phone } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
-import { fmtPrice, fmtDate } from "@/lib/helpers";
+import { fmtPrice, fmtDateTime } from "@/lib/helpers";
 
 const STATUS_LABELS = {
   pending: "En attente",
@@ -103,7 +103,7 @@ export default function StatsPage() {
                     {o.article_title} — {o.client_name}
                   </div>
                   <div className="text-xs text-gray-400 mt-0.5">
-                    Qté {o.quantity || 1} · {fmtPrice(o.price * (o.quantity || 1))} · {fmtDate(o.created_at)}
+                    Qté {o.quantity || 1} · {fmtPrice(o.price * (o.quantity || 1))} · {fmtDateTime(o.created_at)}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">Livraison : {o.location}</div>
                   {phoneByClient[o.client_id] && (

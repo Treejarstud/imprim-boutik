@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Clock, CheckCircle2, PackageCheck, XCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
-import { fmtPrice, fmtDate } from "@/lib/helpers";
+import { fmtPrice, fmtDateTime } from "@/lib/helpers";
 import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -114,7 +114,7 @@ export default function MesCommandesPage() {
                     <div>
                       <div className="font-medium text-sm">{o.article_title}</div>
                       <div className="text-xs text-gray-500 mt-1">
-                        Quantité : {o.quantity || 1} · {fmtDate(o.created_at)}
+                        Quantité : {o.quantity || 1} · {fmtDateTime(o.created_at)}
                       </div>
                       <div className="text-xs text-gray-500 mt-0.5">Livraison : {o.location}</div>
                     </div>
