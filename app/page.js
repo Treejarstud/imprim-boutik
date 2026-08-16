@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PromoBanner from "@/components/PromoBanner";
+import ActivitiesSection from "@/components/ActivitiesSection";
 import AdSlot from "@/components/AdSlot";
 import ArticleCard from "@/components/ArticleCard";
 
@@ -49,10 +50,10 @@ export default function HomePage() {
             <Sparkles size={13} /> La boutique des imprimeurs
           </div>
           <h1 className="text-white text-3xl sm:text-4xl font-bold max-w-xl leading-tight">
-            Vos visuels, imprimés en grand, sans compromis sur la qualité
+            Tout ce qu'il faut pour équiper votre atelier d'impression
           </h1>
           <p className="text-blue-100 text-sm sm:text-base mt-3 max-w-lg">
-            Bâches, vinyles, toiles et panneaux rigides — commandez en ligne, livrés où vous voulez.
+            Supports, matériaux de découpe, pièces détachées et machines professionnelles — installation et formation incluses.
           </p>
           <a href="#catalogue" className="inline-flex items-center gap-2 mt-6 bg-white text-blue-700 font-medium text-sm px-5 py-2.5 rounded-md hover:bg-blue-50">
             Découvrir le catalogue
@@ -61,6 +62,8 @@ export default function HomePage() {
       </div>
 
       <PromoBanner />
+
+      <ActivitiesSection />
 
       {/* Trust badges */}
       <div className="bg-white border-b border-gray-200">
