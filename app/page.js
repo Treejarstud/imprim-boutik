@@ -5,6 +5,8 @@ import { Sparkles, Truck, Ruler, ShieldCheck, MessageCircle, TrendingUp } from "
 import { supabase } from "@/lib/supabaseClient";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import PromoBanner from "@/components/PromoBanner";
+import AdSlot from "@/components/AdSlot";
 import ArticleCard from "@/components/ArticleCard";
 
 export default function HomePage() {
@@ -58,6 +60,8 @@ export default function HomePage() {
         </div>
       </div>
 
+      <PromoBanner />
+
       {/* Trust badges */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-4 py-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -89,6 +93,8 @@ export default function HomePage() {
             </div>
           </div>
         )}
+
+        <AdSlot slot="1111111111" className="mb-6" />
 
         <div className="flex flex-wrap gap-2 mb-5">
           <button
