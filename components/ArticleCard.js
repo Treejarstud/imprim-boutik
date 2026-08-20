@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Star, ImageOff, Video } from "lucide-react";
+import { Star, ImageOff, Video, Heart } from "lucide-react";
 import { fmtPrice } from "@/lib/helpers";
 
-export default function ArticleCard({ article, highlight }) {
+export default function ArticleCard({ article, highlight, isFavorite, onToggleFavorite }) {
+  const outOfStock = article.stock !== undefined && article.stock !== null && article.stock <= 0;
+
   return (
     <Link
       href={`/article/${article.id}`}
@@ -13,7 +15,7 @@ export default function ArticleCard({ article, highlight }) {
       <div className="relative aspect-[4/3] bg-gray-100 flex items-center justify-center overflow-hidden">
         {article.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={article.image_url} alt={article.title} className="w-full h-full object-cover" />
+          <img src={article.image_url} alt={article.title} className={`w-full h-full object-cover ${outOfStock ? "opacity-50" : ""}`} />
         ) : (
           <ImageOff size={28} className="text-gray-300" />
         )}
@@ -22,10 +24,28 @@ export default function ArticleCard({ article, highlight }) {
             Populaire
           </span>
         )}
+        {outOfStock && (
+          <span className="absolute top-2 left-2 bg-gray-800 text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
+            Rupture de stock
+          </span>
+        )}
         {article.video_url && (
-          <span className="absolute top-2 right-2 bg-black/60 text-white p-1 rounded-full" title="Vidéo disponible">
+          <span className="absolute top-2 right-9 bg-black/60 text-white p-1 rounded-full" title="Vidéo disponible">
             <Video size={12} />
           </span>
+        )}
+        {onToggleFavorite && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleFavorite(article);
+            }}
+            className="absolute top-2 right-2 bg-white/90 hover:bg-white p-1.5 rounded-full"
+            title={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+          >
+            <Heart size={14} fill={isFavorite ? "#EF4444" : "none"} stroke={isFavorite ? "#EF4444" : "#4B5563"} />
+          </button>
         )}
       </div>
       <div className="p-3">

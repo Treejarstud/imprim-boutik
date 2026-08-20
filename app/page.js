@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Sparkles, Truck, Ruler, ShieldCheck, MessageCircle, TrendingUp } from "lucide-react";
+import { Sparkles, Truck, Ruler, ShieldCheck, MessageCircle, TrendingUp, Search } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -9,11 +9,15 @@ import PromoBanner from "@/components/PromoBanner";
 import ActivitiesSection from "@/components/ActivitiesSection";
 import AdSlot from "@/components/AdSlot";
 import ArticleCard from "@/components/ArticleCard";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function HomePage() {
+  const { user, openAuth } = useAuth();
   const [categories, setCategories] = useState([]);
   const [articles, setArticles] = useState([]);
+  const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [selectedCat, setSelectedCat] = useState("all");
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,10 +32,40 @@ export default function HomePage() {
     })();
   }, []);
 
-  const visible = useMemo(
-    () => articles.filter((a) => selectedCat === "all" || a.category_id === selectedCat),
-    [articles, selectedCat]
-  );
+  useEffect(() => {
+    if (!user) {
+      setFavoriteIds(new Set());
+      return;
+    }
+    (async () => {
+      const { data } = await supabase.from("favorites").select("article_id").eq("client_id", user.id);
+      setFavoriteIds(new Set((data || []).map((f) => f.article_id)));
+    })();
+  }, [user]);
+
+  async function toggleFavorite(article) {
+    if (!user) return openAuth("login");
+    const isFav = favoriteIds.has(article.id);
+    const next = new Set(favoriteIds);
+    if (isFav) {
+      next.delete(article.id);
+      setFavoriteIds(next);
+      await supabase.from("favorites").delete().eq("client_id", user.id).eq("article_id", article.id);
+    } else {
+      next.add(article.id);
+      setFavoriteIds(next);
+      await supabase.from("favorites").insert({ client_id: user.id, article_id: article.id });
+    }
+  }
+
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return articles.filter((a) => {
+      const matchesCat = selectedCat === "all" || a.category_id === selectedCat;
+      const matchesSearch = !q || a.title.toLowerCase().includes(q) || (a.description || "").toLowerCase().includes(q);
+      return matchesCat && matchesSearch;
+    });
+  }, [articles, selectedCat, search]);
 
   const popular = useMemo(() => [...articles].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 4), [articles]);
 
@@ -91,13 +125,23 @@ export default function HomePage() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {popular.map((a) => (
-                <ArticleCard key={a.id} article={a} highlight />
+                <ArticleCard key={a.id} article={a} highlight isFavorite={favoriteIds.has(a.id)} onToggleFavorite={toggleFavorite} />
               ))}
             </div>
           </div>
         )}
 
         <AdSlot slot="1111111111" className="mb-6" />
+
+        <div className="relative mb-4">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher un article…"
+            className="w-full border border-gray-300 rounded-md pl-9 pr-3 py-2 text-sm"
+          />
+        </div>
 
         <div className="flex flex-wrap gap-2 mb-5">
           <button
@@ -121,12 +165,12 @@ export default function HomePage() {
           <div className="text-sm text-gray-400">Chargement…</div>
         ) : visible.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-lg p-8 text-center text-sm text-gray-500">
-            Aucun article publié pour le moment.
+            {search.trim() ? "Aucun article ne correspond à votre recherche." : "Aucun article publié pour le moment."}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {visible.map((a) => (
-              <ArticleCard key={a.id} article={a} />
+              <ArticleCard key={a.id} article={a} isFavorite={favoriteIds.has(a.id)} onToggleFavorite={toggleFavorite} />
             ))}
           </div>
         )}

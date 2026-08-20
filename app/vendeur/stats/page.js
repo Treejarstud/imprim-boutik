@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Phone } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Phone, Download, TrendingUp, Package } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { fmtPrice, fmtDateTime } from "@/lib/helpers";
 
@@ -49,10 +49,80 @@ export default function StatsPage() {
     load();
   }
 
+  const summary = useMemo(() => {
+    const delivered = orders.filter((o) => o.status === "delivered");
+    const revenue = delivered.reduce((sum, o) => sum + o.price * (o.quantity || 1), 0);
+
+    const qtyByArticle = {};
+    delivered.forEach((o) => {
+      qtyByArticle[o.article_title] = (qtyByArticle[o.article_title] || 0) + (o.quantity || 1);
+    });
+    const best = Object.entries(qtyByArticle).sort((a, b) => b[1] - a[1])[0];
+
+    return {
+      revenue,
+      deliveredCount: delivered.length,
+      bestSeller: best ? { title: best[0], qty: best[1] } : null,
+    };
+  }, [orders]);
+
+  function exportCsv() {
+    const headers = ["Article", "Client", "Téléphone", "Quantité", "Prix unitaire", "Total", "Statut", "Livraison", "Date"];
+    const rows = orders.map((o) => [
+      o.article_title,
+      o.client_name,
+      phoneByClient[o.client_id] || "",
+      o.quantity || 1,
+      o.price,
+      o.price * (o.quantity || 1),
+      STATUS_LABELS[o.status] || o.status,
+      o.location,
+      fmtDateTime(o.created_at),
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(";"))
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `commandes-imprim-boutik-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   if (loading) return <div className="text-sm text-gray-400">Chargement…</div>;
 
   return (
     <div className="space-y-8">
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="font-semibold text-lg">Vue d'ensemble</div>
+          <button onClick={exportCsv} className="text-sm px-3 py-1.5 rounded-md bg-gray-100 hover:bg-gray-200 flex items-center gap-1.5">
+            <Download size={14} /> Exporter les commandes (CSV)
+          </button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="text-xs text-gray-500 mb-1">Chiffre d'affaires (commandes livrées)</div>
+            <div className="text-xl font-semibold">{fmtPrice(summary.revenue)}</div>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="text-xs text-gray-500 mb-1">Commandes livrées</div>
+            <div className="text-xl font-semibold flex items-center gap-2">
+              <Package size={16} className="text-green-600" /> {summary.deliveredCount}
+            </div>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="text-xs text-gray-500 mb-1">Produit le plus vendu</div>
+            <div className="text-sm font-semibold flex items-center gap-2 truncate">
+              <TrendingUp size={16} className="text-blue-600 shrink-0" />
+              {summary.bestSeller ? `${summary.bestSeller.title} (${summary.bestSeller.qty})` : "—"}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div>
         <div className="font-semibold text-lg mb-3">Statistiques par article</div>
         <div className="space-y-2">
@@ -67,7 +137,7 @@ export default function StatsPage() {
               <div key={a.id} className="bg-white border border-gray-200 rounded-lg p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">{a.title}</span>
-                  <span className="text-xs text-gray-400">{a.views || 0} vues</span>
+                  <span className="text-xs text-gray-400">{a.views || 0} vues · stock {a.stock ?? 0}</span>
                 </div>
                 <div className="flex gap-4 mt-2 text-xs">
                   <span>

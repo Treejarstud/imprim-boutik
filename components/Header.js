@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogIn, LogOut, ClipboardList } from "lucide-react";
+import { LogIn, LogOut, ClipboardList, Heart } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import NotificationBell from "./NotificationBell";
 
@@ -20,6 +20,9 @@ export default function Header() {
           {user && <NotificationBell />}
           {user ? (
             <div className="flex items-center gap-2">
+              <Link href="/favoris" className="text-gray-600 hover:text-gray-900 p-1.5" title="Mes favoris">
+                <Heart size={17} />
+              </Link>
               <Link href="/mes-commandes" className="text-sm text-gray-600 hover:text-gray-900 hidden sm:flex items-center gap-1.5">
                 <ClipboardList size={15} /> Mes commandes
               </Link>

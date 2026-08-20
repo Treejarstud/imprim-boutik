@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ShoppingBag, MapPin, Loader2, Check, ImageOff, Minus, Plus, ClipboardList } from "lucide-react";
+import { ShoppingBag, MapPin, Loader2, Check, ImageOff, Minus, Plus, ClipboardList, Heart } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { fmtPrice, fmtDate } from "@/lib/helpers";
 import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import AdSlot from "@/components/AdSlot";
 import Stars from "@/components/Stars";
 
 export default function ArticlePage() {
@@ -29,6 +30,8 @@ export default function ArticlePage() {
   const [locating, setLocating] = useState(false);
   const [orderBusy, setOrderBusy] = useState(false);
   const [orderDone, setOrderDone] = useState(false);
+  const [orderError, setOrderError] = useState("");
+  const [isFavorite, setIsFavorite] = useState(false);
 
   const viewedRef = useRef(false);
 
@@ -51,6 +54,28 @@ export default function ArticlePage() {
       }
     })();
   }, [id]);
+
+  useEffect(() => {
+    if (!user || !id) {
+      setIsFavorite(false);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase.from("favorites").select("id").eq("client_id", user.id).eq("article_id", id).maybeSingle();
+      setIsFavorite(!!data);
+    })();
+  }, [user, id]);
+
+  async function toggleFavorite() {
+    if (!user) return openAuth("login");
+    if (isFavorite) {
+      setIsFavorite(false);
+      await supabase.from("favorites").delete().eq("client_id", user.id).eq("article_id", id);
+    } else {
+      setIsFavorite(true);
+      await supabase.from("favorites").insert({ client_id: user.id, article_id: id });
+    }
+  }
 
   async function submitReview() {
     if (!user) return openAuth("login");
@@ -98,6 +123,19 @@ export default function ArticlePage() {
   async function confirmOrder() {
     if (!location.trim() || !user) return;
     setOrderBusy(true);
+    setOrderError("");
+
+    const { data: stockOk, error: stockErr } = await supabase.rpc("decrement_stock", {
+      p_article_id: article.id,
+      p_quantity: quantity,
+    });
+
+    if (stockErr || !stockOk) {
+      setOrderBusy(false);
+      setOrderError("Stock insuffisant pour cette quantité. Un autre client vient peut-être de commander.");
+      return;
+    }
+
     const { error } = await supabase.from("orders").insert({
       article_id: article.id,
       client_id: user.id,
@@ -109,7 +147,21 @@ export default function ArticlePage() {
       status: "pending",
     });
     setOrderBusy(false);
-    if (!error) setOrderDone(true);
+    if (!error) {
+      setOrderDone(true);
+      setArticle((prev) => (prev ? { ...prev, stock: Math.max(0, (prev.stock || 0) - quantity) } : prev));
+      fetch("/api/notify-vendor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          articleTitle: article.title,
+          clientName: `${profile?.prenom || ""} ${profile?.nom || ""}`.trim() || "Client",
+          quantity,
+          total: fmtPrice(article.price * quantity),
+          location: location.trim(),
+        }),
+      }).catch(() => {});
+    }
   }
 
   if (loading) {
@@ -147,16 +199,29 @@ export default function ArticlePage() {
             )}
           </div>
           <div>
-            <div className="font-semibold text-xl">{article.title}</div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="font-semibold text-xl">{article.title}</div>
+              <button
+                onClick={toggleFavorite}
+                className="shrink-0 p-2 rounded-md hover:bg-gray-100"
+                title={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+              >
+                <Heart size={18} fill={isFavorite ? "#EF4444" : "none"} stroke={isFavorite ? "#EF4444" : "#4B5563"} />
+              </button>
+            </div>
             <p className="text-sm mt-3 text-gray-600">{article.description}</p>
             <div className="text-lg font-semibold mt-3">{fmtPrice(article.price)}</div>
+            <div className={`text-xs mt-1 ${article.stock > 0 ? "text-gray-500" : "text-red-600 font-medium"}`}>
+              {article.stock > 0 ? `En stock : ${article.stock}` : "Rupture de stock"}
+            </div>
 
             {!ordering && !orderDone && (
               <button
                 onClick={() => (user ? setOrdering(true) : openAuth("login"))}
-                className="mt-4 w-full text-sm px-3 py-2.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 flex items-center justify-center gap-2"
+                disabled={article.stock <= 0}
+                className="mt-4 w-full text-sm px-3 py-2.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 flex items-center justify-center gap-2 disabled:opacity-40 disabled:hover:bg-blue-600"
               >
-                <ShoppingBag size={15} /> Commander
+                <ShoppingBag size={15} /> {article.stock > 0 ? "Commander" : "Indisponible"}
               </button>
             )}
 
@@ -172,8 +237,9 @@ export default function ArticlePage() {
                   </button>
                   <span className="w-8 text-center text-sm font-medium">{quantity}</span>
                   <button
-                    onClick={() => setQuantity((q) => q + 1)}
-                    className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50"
+                    onClick={() => setQuantity((q) => Math.min(article.stock, q + 1))}
+                    disabled={quantity >= article.stock}
+                    className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-40"
                   >
                     <Plus size={14} />
                   </button>
@@ -195,6 +261,7 @@ export default function ArticlePage() {
                   </button>
                 </div>
                 <p className="text-xs text-gray-400 mt-2">Paiement à la livraison.</p>
+                {orderError && <div className="text-xs text-red-600 mt-2">{orderError}</div>}
                 <button
                   onClick={confirmOrder}
                   disabled={!location.trim() || orderBusy}
@@ -224,6 +291,8 @@ export default function ArticlePage() {
             <video src={article.video_url} controls className="w-full max-h-96 rounded-lg bg-black" />
           </div>
         )}
+
+        <AdSlot slot="2222222222" className="mt-6" />
 
         <div className="mt-6 bg-white border border-gray-200 rounded-lg p-5">
           <div className="font-medium text-sm mb-3">Avis clients ({reviews.length})</div>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Layers, Package, BarChart3, Users, LogOut, Loader2, Megaphone } from "lucide-react";
+import { Layers, Package, BarChart3, Users, LogOut, Loader2, Megaphone, UsersRound } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -13,6 +13,7 @@ const TABS = [
   { href: "/vendeur/articles", label: "Articles", icon: Package },
   { href: "/vendeur/stats", label: "Statistiques", icon: BarChart3, badge: "pending" },
   { href: "/vendeur/messages", label: "Messagerie", icon: Users, badge: "messages" },
+  { href: "/vendeur/equipe", label: "Équipe", icon: UsersRound },
 ];
 
 export default function VendeurLayout({ children }) {

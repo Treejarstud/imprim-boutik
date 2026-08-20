@@ -90,7 +90,7 @@ export default function ArticlesPage() {
               <div className="flex-1 min-w-[8rem]">
                 <div className="text-sm truncate">{a.title}</div>
                 <div className="text-xs text-gray-400">
-                  {fmtPrice(a.price)} · {a.views || 0} vues
+                  {fmtPrice(a.price)} · {a.views || 0} vues · stock : {a.stock ?? 0}
                 </div>
               </div>
               <span className={`text-xs px-2 py-1 rounded-full ${a.published ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
@@ -141,6 +141,7 @@ function ArticleForm({ categories, initial, userId, onCancel, onSaved }) {
   const [categoryId, setCategoryId] = useState(initial?.category_id || categories[0]?.id || "");
   const [description, setDescription] = useState(initial?.description || "");
   const [price, setPrice] = useState(initial?.price || "");
+  const [stock, setStock] = useState(initial?.stock ?? 0);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(initial?.image_url || null);
   const [videoFile, setVideoFile] = useState(null);
@@ -185,6 +186,7 @@ function ArticleForm({ categories, initial, userId, onCancel, onSaved }) {
         category_id: categoryId,
         description,
         price: Number(price) || 0,
+        stock: Number(stock) || 0,
         image_url,
         video_url,
       };
@@ -221,9 +223,15 @@ function ArticleForm({ categories, initial, userId, onCancel, onSaved }) {
             ))}
           </select>
         </div>
-        <div>
-          <label className="text-xs font-medium text-gray-600">Prix (Frs CFA)</label>
-          <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full border border-gray-300 rounded-md p-2 text-sm mt-1" />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-medium text-gray-600">Prix (Frs CFA)</label>
+            <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full border border-gray-300 rounded-md p-2 text-sm mt-1" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-600">Stock disponible</label>
+            <input type="number" min="0" value={stock} onChange={(e) => setStock(e.target.value)} className="w-full border border-gray-300 rounded-md p-2 text-sm mt-1" />
+          </div>
         </div>
         <div>
           <label className="text-xs font-medium text-gray-600">Description</label>

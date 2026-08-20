@@ -282,6 +282,82 @@ create policy "un vendeur marque les messages comme lus"
   with check (public.is_vendor());
 
 -- ------------------------------------------------------------
+-- PROMOTIONS (bannières internes affichées sur la boutique)
+-- ------------------------------------------------------------
+create table public.promotions (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  image_url text not null,
+  link_url text,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+alter table public.promotions enable row level security;
+
+create policy "promotions actives visibles par tous, toutes visibles par les vendeurs"
+  on public.promotions for select
+  using (active = true or public.is_vendor());
+
+create policy "seuls les vendeurs gèrent les promotions"
+  on public.promotions for all
+  using (public.is_vendor())
+  with check (public.is_vendor());
+
+-- ------------------------------------------------------------
+-- STOCK — quantité disponible par article
+-- ------------------------------------------------------------
+alter table public.articles add column if not exists stock integer not null default 0;
+
+-- Décrémente le stock de façon sûre (évite qu'une commande passe si le
+-- stock est insuffisant, même en cas de commandes simultanées).
+create or replace function public.decrement_stock(p_article_id uuid, p_quantity integer)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_updated integer;
+begin
+  update public.articles
+  set stock = stock - p_quantity
+  where id = p_article_id and stock >= p_quantity;
+
+  get diagnostics v_updated = row_count;
+  return v_updated > 0;
+end;
+$$;
+
+grant execute on function public.decrement_stock(uuid, integer) to authenticated;
+
+-- ------------------------------------------------------------
+-- FAVORIS (articles sauvegardés par un client)
+-- ------------------------------------------------------------
+create table public.favorites (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references public.profiles(id) on delete cascade,
+  article_id uuid not null references public.articles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (client_id, article_id)
+);
+
+alter table public.favorites enable row level security;
+
+create policy "un client gère ses propres favoris"
+  on public.favorites for all
+  using (auth.uid() = client_id)
+  with check (auth.uid() = client_id);
+
+-- ------------------------------------------------------------
+-- ÉQUIPE — permet à un vendeur de promouvoir un autre compte vendeur
+-- ------------------------------------------------------------
+create policy "un vendeur peut modifier le rôle d'un autre profil"
+  on public.profiles for update
+  using (public.is_vendor())
+  with check (public.is_vendor());
+
+-- ------------------------------------------------------------
 -- Pour créer votre compte vendeur : inscrivez-vous normalement sur le
 -- site avec votre e-mail, puis exécutez la ligne ci-dessous dans le SQL
 -- Editor de Supabase (remplacez l'e-mail par le vôtre) :
